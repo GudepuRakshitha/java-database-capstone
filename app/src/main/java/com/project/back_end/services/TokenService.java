@@ -1,34 +1,46 @@
 package com.project.back_end.services;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+
+import java.nio.charset.StandardCharsets;
+import java.security.Key;
+import java.util.Date;
 
 @Service
 public class TokenService {
 
-    // A simple map to store tokens and associated usernames
-    private final ConcurrentHashMap<String, String> tokenRepo = new ConcurrentHashMap<>();
+    @Value("${jwt.secret}")
+    private String secret;
 
-    // Generates a random token for a user
-    public String generateToken(String username) {
-        String token = UUID.randomUUID().toString();
-        tokenRepo.put(token, username);
-        return token;
+    // Generate JWT token using email
+    public String generateToken(String email) {
+        return Jwts.builder()
+                .setSubject(email)
+                .setIssuedAt(new Date())
+                .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 24 hrs
+                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .compact();
     }
 
-    // Validates if a token exists
+    // Validate token (basic)
     public boolean validateToken(String token) {
-        return tokenRepo.containsKey(token);
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(getSigningKey())
+                    .build()
+                    .parseClaimsJws(token.replace("Bearer ", ""));
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    // Gets the username associated with a token
-    public String getUsernameFromToken(String token) {
-        return tokenRepo.get(token);
-    }
-
-    // Removes token upon logout
-    public void invalidateToken(String token) {
-        tokenRepo.remove(token);
+    // Signing key
+    private Key getSigningKey() {
+        return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 }
