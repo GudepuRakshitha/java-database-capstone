@@ -7,20 +7,18 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@RestController
-@RequestMapping("/api/doctors")
-public class DoctorController {
+@GetMapping("/availability/{doctorId}")
+public ResponseEntity<?> getAvailability(
+        @PathVariable Long doctorId,
+        @RequestParam String date,
+        @RequestHeader("Authorization") String token) {
 
-    @Autowired
-    private DoctorService doctorService;
-
-    @GetMapping
-    public List<Doctor> getAllDoctors() {
-        return doctorService.findAll();
+    if (!tokenService.validateToken(token)) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body("Invalid token");
     }
 
-    @PostMapping
-    public Doctor addDoctor(@RequestBody Doctor doctor) {
-        return doctorService.save(doctor);
-    }
+    return ResponseEntity.ok(
+        doctorService.getAvailableSlots(doctorId, LocalDate.parse(date))
+    );
 }
